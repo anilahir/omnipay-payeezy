@@ -17,7 +17,7 @@ class PurchaseRequest extends AbstractRequest
             //'merchant_ref' => 'Astonishing-Sale',
             'transaction_type' => 'purchase',
             'amount' => floatval($this->getAmount()) * 100,
-            'currency_code' => 'USD'
+            'currency_code' =>  $this->getCurrency()
         ];
 
         $paymentMethod = $this->getPaymentMethod();

@@ -24,7 +24,7 @@ class RefundRequest extends AbstractRequest
             'transaction_type' => 'refund',
             'method' => 'token',
             'amount' => floatval($this->getAmount()) * 100,
-            'currency_code' => 'USD',
+            'currency_code' => $transactionReference->currency,
             'token' => [
                 'token_type' => $transactionReference->token->token_type,
                 'token_data' => [
