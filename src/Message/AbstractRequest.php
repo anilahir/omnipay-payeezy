@@ -85,43 +85,35 @@ abstract class AbstractRequest extends \Omnipay\Common\Message\AbstractRequest
 
     public function sendData($data)
     {
-        // Don't throe exceptions for 4xx errors
-        $this->httpClient->getEventDispatcher()->addListener(
-            'request.error',
-            function ($event) {
-                if($event['response']->isClientError()) {
-                    $event->stopPropagation();
-                }
-            }
-        );
+        $hmacAuth = $this->hmacAuthorizationToken($data);
+        
+        $headers = [
+            'Content-Type' => 'application/json',
+            'apikey' => $this->getApiKey(),
+            'token' => $this->getMerchantToken(),
+            'Authorization' => $hmacAuth['authorization'],
+            'nonce' => $hmacAuth['nonce'],
+            'timestamp' => $hmacAuth['timestamp']
+        ];
 
         if(!empty($data)) {
-            $httpRequest = $this->httpClient->createRequest(
-                $this->getHttpMethod(),
-                $this->getEndpoint(),
-                null,
-                $data
-            );
+            $httpResponse = $this->httpClient->request($this->getHttpMethod(), $this->getEndpoint(), $headers, $data);
         }
         else {
-            $httpRequest = $this->httpClient->createRequest(
-                $this->getHttpMethod(),
-                $this->getEndpoint()
-            );
+            $httpResponse = $this->httpClient->request($this->getHttpMethod(), $this->getEndpoint(), $headers);
         }
-
-        $hmacAuth = $this->hmacAuthorizationToken($data);
-
-        $httpResponse = $httpRequest
-            ->setHeader('apikey', $this->getApiKey())
-            ->setHeader('token', $this->getMerchantToken())
-            ->setHeader('Content-Type', 'application/json')
-            ->setHeader('Authorization', $hmacAuth['authorization'])
-            ->setHeader('nonce ', $hmacAuth['nonce'])
-            ->setHeader('timestamp ', $hmacAuth['timestamp'])
-            ->send();
-
-        return $this->response = new Response($this, $httpResponse->json());
+    
+        try {
+            $jsonRes = json_decode($httpResponse->getBody()->getContents(), true);
+        }
+        catch (\Exception $e){
+            info('Guzzle response : ', [$httpResponse]);
+            $res = [];
+            $res['resptext'] = 'Oops! something went wrong, Try again after sometime.';
+            return $this->response = new Response($this, $res);
+        }
+        
+        return $this->response = new Response($this, $jsonRes);
     }
 
     private function hmacAuthorizationToken($payload)
